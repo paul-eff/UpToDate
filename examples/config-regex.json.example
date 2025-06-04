@@ -1,0 +1,16 @@
+{
+  "url": "https://example.com/product-page",
+  "fetch_method": "browser",
+  "search": {
+    "type": "regex",
+    "pattern": "^[1-9]\\d*$",
+    "xpath": "//div[@class='units_available']",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "discord": {
+      "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+    }
+  },
+  "interval": 600
+}

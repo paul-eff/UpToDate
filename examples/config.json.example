@@ -1,0 +1,27 @@
+{
+  "url": "https://example.com",
+  "fetch_method": "http",
+  "search": {
+    "type": "string",
+    "pattern": "Sale",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "email": {
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "username": "your-email@gmail.com",
+      "password": "your-app-password",
+      "from": "your-email@gmail.com",
+      "to": "recipient@example.com",
+      "subject": "UpToDate Alert"
+    },
+    "discord": {
+      "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+    },
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    }
+  },
+  "interval": 300
+}

@@ -129,4 +129,9 @@ Create a `config.json` file based on the provided examples:
 
 ## Docker
 
-Use the `Dockerfile` and `docker-compose.yaml` to let UpToDate run in a cotainerized environment.
+Use the `Dockerfile` and `docker-compose.yaml` to let UpToDate run in a containerized environment.
+
+In your root directory
+```bash
+docker compose up -d
+```
