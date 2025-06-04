@@ -1,0 +1,6 @@
+services:
+  uptodate:
+    build: .
+    volumes:
+      - ./config.json:/app/config.json:ro
+    restart: unless-stopped
