@@ -27,9 +27,9 @@ go build -o uptodate
 
 ## Configuration
 
-Create a `config.json` file based on the provided examples:
+Create a `config.json` file based on the [provided examples](./examples):
 
-### HTTP Mode Example (No Chrome Required)
+### HTTP Mode Example (no Chromium required)
 ```json
 {
   "url": "https://example.com",
