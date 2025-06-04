@@ -77,7 +77,7 @@ func (b *Browser) fetch(config *Config) *Result {
 
 	if config.SearchConfig.XPath != "" {
 		// Search within specific XPath
-		elements, err := page.Elements(config.SearchConfig.XPath)
+		elements, err := page.ElementsX(config.SearchConfig.XPath)
 		if err != nil {
 			return &Result{
 				Found:   false,
