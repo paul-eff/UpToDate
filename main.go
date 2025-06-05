@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -132,6 +133,14 @@ func validateConfig(config *Config) error {
 
 	if config.SearchConfig.Type == "" {
 		config.SearchConfig.Type = "string" // Default to string search
+	}
+
+	// Validate compound patterns if type is compound
+	if strings.ToLower(config.SearchConfig.Type) == "compound" {
+		_, err := ParseCompoundPattern(config.SearchConfig.Pattern)
+		if err != nil {
+			return fmt.Errorf("invalid compound pattern: %w", err)
+		}
 	}
 
 	if config.SearchConfig.NotifyOn == "" {

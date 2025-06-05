@@ -5,7 +5,7 @@ A simple web monitoring tool that checks websites for specific content and sends
 ## Features
 
 - **Dual Fetch Modes**: HTTP client (no dependencies) or headless browser (with embedded Chromium)
-- **Flexible Search**: Search for exact strings or regex patterns
+- **Flexible Search**: Search for exact strings, regex patterns, or compound patterns with AND/OR logic
 - **XPath Support**: Target specific page elements
 - **Multiple Notifications**: Email (SMTP), Discord webhooks, and Slack webhooks
 - **Configurable Monitoring**: Set custom intervals for continuous monitoring
@@ -69,7 +69,26 @@ Create a `config.json` file based on the [provided examples](./examples):
       "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
     }
   },
-  "interval": 600
+  "interval": 300
+}
+```
+
+### Compound Pattern Example (NEW!)
+```json
+{
+  "url": "https://example.com/product",
+  "fetch_method": "http",
+  "search": {
+    "type": "compound",
+    "pattern": "(string:sale OR string:discount) AND regex:\\€[0-9]+\\.[0-9]{2}",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "discord": {
+      "webhook_url": "YOUR_DISCORD_WEBHOOK_URL"
+    }
+  },
+  "interval": 300
 }
 ```
 
@@ -77,12 +96,65 @@ Create a `config.json` file based on the [provided examples](./examples):
 
 - **url**: The webpage to monitor
 - **fetch_method**: `"http"` (default) or `"browser"` (will install Chromium to cache)
-- **search.type**: `"string"` or `"regex"`
-- **search.pattern**: Text or regex pattern to search for
+- **search.type**: `"string"`, `"regex"`, or `"compound"`
+- **search.pattern**: Text, regex pattern, or compound pattern to search for
 - **search.xpath**: Optional XPath to limit search scope (full XPath in browser mode, basic in HTTP mode)
 - **search.notify_on**: `"found"` or `"not_found"`
-- **interval**: Check interval in seconds (default: 300)
 - **notifications**: At least one notification method required
+- **interval**: Check interval in seconds (default: 300)
+
+### Compound Pattern Syntax
+
+Compound patterns allow you to combine multiple search criteria using AND/OR logic:
+
+#### Basic Operators
+- **AND**: Both patterns must be found
+- **OR**: Either pattern must be found
+
+#### Pattern Types
+- **pattern** - Defaults to string matching
+- **string:pattern** - Exact text matching
+- **string:\"this AND that\"** - Exact text matching, but containing a control word
+- **regex:pattern** - Regular expression matching
+
+#### Examples
+```json
+// Simple AND - both must be found
+"pattern1 AND pattern2"
+
+// Simple OR - either can be found  
+"pattern1 OR pattern2"
+
+// Mixed types - combine string and regex
+"string:sale AND regex:[0-9]+\\.[0-9]{2}"
+
+// Parentheses grouping
+"(urgent OR breaking) AND news"
+
+// Complex combinations
+"regex:error|failed OR (string:maintenance AND string:scheduled)"
+
+// Price monitoring
+"string:price AND regex:\\$[0-9]+\\.[0-9]{2}"
+
+// Stock alerts
+"(string:in stock OR string:available) AND regex:item-[0-9]+"
+
+// Quoted patterns for text with AND/OR keywords, or special characters
+"string:\"HOT AND COLD\" OR string:DECAPITATED"
+
+// Patterns with colons or special characters
+"string:\"Time: 12:30:45\" AND regex:[0-9]{2}:[0-9]{2}"
+
+// Escaped quotes in patterns
+"string:\"He said \\\"hello\\\" to me\" AND test"
+```
+
+#### Important Notes for Complex Patterns
+- **Use quotes** when your pattern contains AND/OR keywords, or colons
+- **Escape special characters** inside quoted patterns with backslash: `\.`
+- **Type prefixes** work with quoted strings: `string:"text with spaces"`
+- **Regex patterns** can contain any characters when quoted: `regex:"\\$[0-9]+\\.[0-9]{2}"`
 
 ### Fetch Methods
 

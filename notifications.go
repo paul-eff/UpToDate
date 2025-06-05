@@ -29,7 +29,7 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 
 	message := ns.buildMessage(result)
 	reason := ns.getNotificationReason(result)
-	
+
 	var errors []error
 	var sentChannels []string
 
@@ -75,7 +75,7 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 // shouldNotify determines if notifications should be sent
 func (ns *NotificationService) shouldNotify(result *Result) bool {
 	if result.Error != nil {
-		return true // Always notify on errors
+		return true
 	}
 
 	notifyOn := ns.config.SearchConfig.NotifyOn
@@ -116,7 +116,7 @@ func (ns *NotificationService) getNotificationReason(result *Result) string {
 // buildMessage creates a notification message
 func (ns *NotificationService) buildMessage(result *Result) string {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	
+
 	if result.Error != nil {
 		return fmt.Sprintf("[%s] Error monitoring %s: %s", timestamp, ns.config.URL, result.Error.Error())
 	}
@@ -126,10 +126,10 @@ func (ns *NotificationService) buildMessage(result *Result) string {
 		status = "FOUND"
 	}
 
-	message := fmt.Sprintf("[%s] Pattern '%s' %s on %s", 
-		timestamp, 
-		ns.config.SearchConfig.Pattern, 
-		status, 
+	message := fmt.Sprintf("[%s] Pattern '%s' %s on %s",
+		timestamp,
+		ns.config.SearchConfig.Pattern,
+		status,
 		ns.config.URL)
 
 	// Add matches if found and using regex
@@ -146,17 +146,17 @@ func (ns *NotificationService) buildMessage(result *Result) string {
 // sendEmail sends email notification
 func (ns *NotificationService) sendEmail(message string) error {
 	emailConfig := ns.config.Notifications.Email
-	
+
 	auth := smtp.PlainAuth("", emailConfig.Username, emailConfig.Password, emailConfig.SMTPHost)
-	
+
 	to := []string{emailConfig.To}
 	subject := emailConfig.Subject
 	if subject == "" {
 		subject = "UpToDate Monitoring Alert"
 	}
-	
+
 	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", emailConfig.To, subject, message)
-	
+
 	addr := fmt.Sprintf("%s:%d", emailConfig.SMTPHost, emailConfig.SMTPPort)
 	return smtp.SendMail(addr, auth, emailConfig.From, to, []byte(body))
 }
@@ -169,7 +169,7 @@ type DiscordWebhook struct {
 // sendDiscord sends Discord webhook notification
 func (ns *NotificationService) sendDiscord(message string) error {
 	webhook := DiscordWebhook{Content: message}
-	
+
 	jsonData, err := json.Marshal(webhook)
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ type SlackWebhook struct {
 // sendSlack sends Slack webhook notification
 func (ns *NotificationService) sendSlack(message string) error {
 	webhook := SlackWebhook{Text: message}
-	
+
 	jsonData, err := json.Marshal(webhook)
 	if err != nil {
 		return err

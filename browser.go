@@ -131,6 +131,12 @@ func (b *Browser) performSearch(content string, searchConfig *SearchConfig) (boo
 		}
 		matches := re.FindAllString(content, -1)
 		return len(matches) > 0, matches, nil
+	case "compound":
+		compound, err := ParseCompoundPattern(searchConfig.Pattern)
+		if err != nil {
+			return false, nil, fmt.Errorf("invalid compound pattern: %w", err)
+		}
+		return EvaluateCompoundPattern(compound, content)
 	default:
 		return false, nil, fmt.Errorf("unsupported search type: %s", searchConfig.Type)
 	}

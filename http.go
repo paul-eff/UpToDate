@@ -16,9 +16,9 @@ type HTTP struct {
 	client *http.Client
 }
 
-// Close implements the Client interface (no-op for HTTP client)
+// Close implements the Client interface
 func (h *HTTP) Close() {
-	// HTTP client doesn't need explicit cleanup
+	//Not needed
 }
 
 // NewHTTP creates a new HTTP client
@@ -40,10 +40,10 @@ func (h *HTTP) Fetch(config *Config) *Result {
 			Error:   fmt.Errorf("failed to create request: %w", err),
 		}
 	}
-	
+
 	// Set realistic user agent
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-	
+
 	resp, err := h.client.Do(req)
 	if err != nil {
 		return &Result{
@@ -73,6 +73,7 @@ func (h *HTTP) Fetch(config *Config) *Result {
 
 	content := string(body)
 
+	// TODO: No idea what I was thinking, but this should be implemented the same as browser is.
 	// If XPath is specified, try to extract content from HTML
 	if config.SearchConfig.XPath != "" {
 		extracted, err := h.extractByXPath(content, config.SearchConfig.XPath)
@@ -136,9 +137,7 @@ func (h *HTTP) extractText(n *html.Node, textContent *strings.Builder) {
 
 // extractByXPath attempts basic XPath-like extraction (simplified)
 func (h *HTTP) extractByXPath(htmlContent, xpath string) (string, error) {
-	// This is a simplified XPath implementation for basic cases
-	// For full XPath support, consider using a library like "github.com/antchfx/htmlquery"
-	
+
 	// Convert simple XPath patterns to element extraction
 	if strings.Contains(xpath, "//") {
 		// Simple tag extraction like //div, //span, etc.
@@ -168,7 +167,7 @@ func (h *HTTP) extractByTag(htmlContent, tagName string) string {
 	pattern := fmt.Sprintf(`<%s[^>]*>(.*?)</%s>`, tagName, tagName)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(htmlContent, -1)
-	
+
 	var result strings.Builder
 	for _, match := range matches {
 		if len(match) > 1 {
@@ -177,7 +176,7 @@ func (h *HTTP) extractByTag(htmlContent, tagName string) string {
 			result.WriteString(strings.TrimSpace(cleanContent) + " ")
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -186,7 +185,7 @@ func (h *HTTP) extractByTagAndClass(htmlContent, tagName, className string) stri
 	pattern := fmt.Sprintf(`<%s[^>]*class=['"][^'"]*%s[^'"]*['"][^>]*>(.*?)</%s>`, tagName, className, tagName)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(htmlContent, -1)
-	
+
 	var result strings.Builder
 	for _, match := range matches {
 		if len(match) > 1 {
@@ -195,7 +194,7 @@ func (h *HTTP) extractByTagAndClass(htmlContent, tagName, className string) stri
 			result.WriteString(strings.TrimSpace(cleanContent) + " ")
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -216,6 +215,12 @@ func (h *HTTP) performSearch(content string, searchConfig *SearchConfig) (bool, 
 		}
 		matches := re.FindAllString(content, -1)
 		return len(matches) > 0, matches, nil
+	case "compound":
+		compound, err := ParseCompoundPattern(searchConfig.Pattern)
+		if err != nil {
+			return false, nil, fmt.Errorf("invalid compound pattern: %w", err)
+		}
+		return EvaluateCompoundPattern(compound, content)
 	default:
 		return false, nil, fmt.Errorf("unsupported search type: %s", searchConfig.Type)
 	}
