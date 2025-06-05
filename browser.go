@@ -24,9 +24,10 @@ type Client interface {
 
 // Result holds the result of a fetch operation
 type Result struct {
-	Found   bool
-	Content string
-	Error   error
+	Found     bool
+	Content   string
+	Error     error
+	Matches   []string // Regex matches found in content
 }
 
 // NewBrowser creates a new browser instance
@@ -95,12 +96,13 @@ func (b *Browser) fetch(config *Config) *Result {
 	}
 
 	// Perform the search
-	found, err := b.performSearch(content, &config.SearchConfig)
+	found, matches, err := b.performSearch(content, &config.SearchConfig)
 	if err != nil {
 		return &Result{
 			Found:   false,
 			Content: content,
 			Error:   fmt.Errorf("search failed: %w", err),
+			Matches: nil,
 		}
 	}
 
@@ -108,22 +110,29 @@ func (b *Browser) fetch(config *Config) *Result {
 		Found:   found,
 		Content: content,
 		Error:   nil,
+		Matches: matches,
 	}
 }
 
 // performSearch executes the search based on configuration
-func (b *Browser) performSearch(content string, searchConfig *SearchConfig) (bool, error) {
+func (b *Browser) performSearch(content string, searchConfig *SearchConfig) (bool, []string, error) {
 	switch strings.ToLower(searchConfig.Type) {
 	case "string":
-		return strings.Contains(content, searchConfig.Pattern), nil
-	case "regex":
-		matched, err := regexp.MatchString(searchConfig.Pattern, content)
-		if err != nil {
-			return false, fmt.Errorf("invalid regex pattern: %w", err)
+		found := strings.Contains(content, searchConfig.Pattern)
+		var matches []string
+		if found {
+			matches = []string{searchConfig.Pattern}
 		}
-		return matched, nil
+		return found, matches, nil
+	case "regex":
+		re, err := regexp.Compile(searchConfig.Pattern)
+		if err != nil {
+			return false, nil, fmt.Errorf("invalid regex pattern: %w", err)
+		}
+		matches := re.FindAllString(content, -1)
+		return len(matches) > 0, matches, nil
 	default:
-		return false, fmt.Errorf("unsupported search type: %s", searchConfig.Type)
+		return false, nil, fmt.Errorf("unsupported search type: %s", searchConfig.Type)
 	}
 }
 

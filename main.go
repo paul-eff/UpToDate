@@ -101,8 +101,17 @@ func runFetch(client Client, notificationService *NotificationService, config *C
 		status := "not found"
 		if result.Found {
 			status = "found"
+			if len(result.Matches) > 0 {
+				log.Printf("Pattern '%s' %s. Matches found:", config.SearchConfig.Pattern, status)
+				for i, match := range result.Matches {
+					log.Printf("  [%d] %s", i+1, match)
+				}
+			} else {
+				log.Printf("Pattern '%s' %s", config.SearchConfig.Pattern, status)
+			}
+		} else {
+			log.Printf("Pattern '%s' %s", config.SearchConfig.Pattern, status)
 		}
-		log.Printf("Pattern '%s' %s", config.SearchConfig.Pattern, status)
 	}
 
 	// Send notifications if needed

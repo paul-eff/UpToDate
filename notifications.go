@@ -126,11 +126,21 @@ func (ns *NotificationService) buildMessage(result *Result) string {
 		status = "FOUND"
 	}
 
-	return fmt.Sprintf("[%s] Pattern '%s' %s on %s", 
+	message := fmt.Sprintf("[%s] Pattern '%s' %s on %s", 
 		timestamp, 
 		ns.config.SearchConfig.Pattern, 
 		status, 
 		ns.config.URL)
+
+	// Add matches if found and using regex
+	if result.Found && len(result.Matches) > 0 {
+		message += "\n\nMatches found:"
+		for i, match := range result.Matches {
+			message += fmt.Sprintf("\n  [%d] %s", i+1, match)
+		}
+	}
+
+	return message
 }
 
 // sendEmail sends email notification
