@@ -19,9 +19,9 @@ type Config struct {
 
 // SearchConfig defines what to search for and how
 type SearchConfig struct {
-	Type     string `json:"type"`      // "string", "regex", "compound"
-	Pattern  string `json:"pattern"`   // the search pattern
-	XPath    string `json:"xpath"`     // optional xpath selector
+	Type     string `json:"type"` // "string", "regex", "compound"
+	Pattern  string `json:"pattern"`
+	XPath    string `json:"xpath"`
 	NotifyOn string `json:"notify_on"` // "found" or "not_found"
 }
 
@@ -33,8 +33,8 @@ type CompoundPattern struct {
 
 // PatternElement represents either a simple pattern or a nested compound pattern
 type PatternElement struct {
-	Type     string           // "string", "regex", "compound"
-	Pattern  string           // For simple patterns
+	Type     string // "string", "regex", "compound"
+	Pattern  string
 	Compound *CompoundPattern // For nested compound patterns
 }
 
@@ -127,7 +127,7 @@ func tokenizePattern(pattern string) ([]Token, error) {
 		}
 
 		// Look for operators (AND, OR) - but only when not inside quotes
-		if i+4 <= len(pattern) && pattern[i:i+4] == " AND" && (i+4 >= len(pattern) || pattern[i+4] == ' ') {
+		if (i+4 <= len(pattern)) && (pattern[i:i+4] == " AND") && (i+4 >= len(pattern) || pattern[i+4] == ' ') {
 			tokens = append(tokens, Token{Type: "AND", Value: "AND"})
 			i += 4
 			continue
@@ -199,43 +199,6 @@ func tokenizePattern(pattern string) ([]Token, error) {
 	}
 
 	return tokens, nil
-}
-
-// parseQuotedString parses a quoted string, handling escape sequences
-func parseQuotedString(pattern string, start int) (string, int, error) {
-	if start >= len(pattern) || pattern[start] != '"' {
-		return "", start, fmt.Errorf("expected quote at position %d", start)
-	}
-
-	var result strings.Builder
-	i := start + 1 // Skip opening quote
-
-	for i < len(pattern) {
-		if pattern[i] == '\\' && i+1 < len(pattern) {
-			// Handle escape sequences
-			switch pattern[i+1] {
-			case '"':
-				result.WriteByte('"')
-			case '\\':
-				result.WriteByte('\\')
-			case 'n':
-				result.WriteByte('\n')
-			case 't':
-				result.WriteByte('\t')
-			default:
-				result.WriteByte(pattern[i+1])
-			}
-			i += 2
-		} else if pattern[i] == '"' {
-			// End of quoted string
-			return result.String(), i + 1, nil
-		} else {
-			result.WriteByte(pattern[i])
-			i++
-		}
-	}
-
-	return "", i, fmt.Errorf("unterminated quoted string starting at position %d", start)
 }
 
 // parseTokens parses a slice of tokens into a CompoundPattern

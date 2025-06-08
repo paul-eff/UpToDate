@@ -31,14 +31,14 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 	reason := ns.getNotificationReason(result)
 
 	var errors []error
-	var sentChannels []string
+	var sendChannels []string
 
 	// Send email notification
 	if ns.config.Notifications.Email != nil {
 		if err := ns.sendEmail(message); err != nil {
 			errors = append(errors, fmt.Errorf("email notification failed: %w", err))
 		} else {
-			sentChannels = append(sentChannels, "email")
+			sendChannels = append(sendChannels, "email")
 		}
 	}
 
@@ -47,7 +47,7 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 		if err := ns.sendDiscord(message); err != nil {
 			errors = append(errors, fmt.Errorf("discord notification failed: %w", err))
 		} else {
-			sentChannels = append(sentChannels, "discord")
+			sendChannels = append(sendChannels, "discord")
 		}
 	}
 
@@ -56,13 +56,13 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 		if err := ns.sendSlack(message); err != nil {
 			errors = append(errors, fmt.Errorf("slack notification failed: %w", err))
 		} else {
-			sentChannels = append(sentChannels, "slack")
+			sendChannels = append(sendChannels, "slack")
 		}
 	}
 
 	// Log notification status
-	if len(sentChannels) > 0 {
-		log.Printf("Notification sent via %v - Reason: %s", sentChannels, reason)
+	if len(sendChannels) > 0 {
+		log.Printf("Notification sent via %v - Reason: %s", sendChannels, reason)
 	}
 
 	if len(errors) > 0 {
@@ -115,7 +115,7 @@ func (ns *NotificationService) getNotificationReason(result *Result) string {
 
 // buildMessage creates a notification message
 func (ns *NotificationService) buildMessage(result *Result) string {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	timestamp := time.Now().Format("2025-04-21 16:18:20")
 
 	if result.Error != nil {
 		return fmt.Sprintf("[%s] Error monitoring %s: %s", timestamp, ns.config.URL, result.Error.Error())
@@ -151,9 +151,6 @@ func (ns *NotificationService) sendEmail(message string) error {
 
 	to := []string{emailConfig.To}
 	subject := emailConfig.Subject
-	if subject == "" {
-		subject = "UpToDate Monitoring Alert"
-	}
 
 	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", emailConfig.To, subject, message)
 

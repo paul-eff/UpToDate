@@ -14,9 +14,9 @@ import (
 func main() {
 	var configFile string
 	var runOnce bool
-	
-	flag.StringVar(&configFile, "config", "config.json", "Path to configuration file")
-	flag.BoolVar(&runOnce, "once", false, "Run once and exit (don't monitor continuously)")
+
+	flag.StringVar(&configFile, "config", "config.json", "Path to config file.")
+	flag.BoolVar(&runOnce, "once", false, "Run once and exit.")
 	flag.Parse()
 
 	// Load configuration
@@ -34,9 +34,9 @@ func main() {
 	var client Client
 	fetchMethod := config.FetchMethod
 	if fetchMethod == "" {
-		fetchMethod = "http" // Default to HTTP for better compatibility
+		fetchMethod = "http"
 	}
-	
+
 	switch fetchMethod {
 	case "browser":
 		client = NewBrowser()
@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("Invalid fetch_method: %s (must be 'browser' or 'http')", fetchMethod)
 	}
 	defer client.Close()
-	
+
 	notificationService := NewNotificationService(config)
 
 	log.Printf("Starting UpToDate monitoring for: %s", config.URL)
@@ -69,7 +69,7 @@ func main() {
 	if interval == 0 {
 		interval = 300 * time.Second // Default to 5 minutes
 	}
-	
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -93,9 +93,9 @@ func main() {
 // runFetch performs a single fetch operation
 func runFetch(client Client, notificationService *NotificationService, config *Config) {
 	log.Printf("Fetching %s...", config.URL)
-	
+
 	result := client.Fetch(config)
-	
+
 	if result.Error != nil {
 		log.Printf("Fetch error: %v", result.Error)
 	} else {
@@ -156,12 +156,15 @@ func validateConfig(config *Config) error {
 	// Validate email config if present
 	if notifications.Email != nil {
 		email := notifications.Email
-		if email.SMTPHost == "" || email.Username == "" || email.Password == "" || 
-		   email.From == "" || email.To == "" {
+		if email.SMTPHost == "" || email.Username == "" || email.Password == "" ||
+			email.From == "" || email.To == "" {
 			return fmt.Errorf("email configuration is incomplete")
 		}
 		if email.SMTPPort == 0 {
 			email.SMTPPort = 587 // Default SMTP port
+		}
+		if email.Subject == "" {
+			email.Subject = "UpToDate Alert!"
 		}
 	}
 

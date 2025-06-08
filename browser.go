@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -14,20 +13,6 @@ import (
 // Browser handles web operations using embedded browser
 type Browser struct {
 	browser *rod.Browser
-}
-
-// Client interface for different fetch methods
-type Client interface {
-	Fetch(config *Config) *Result
-	Close()
-}
-
-// Result holds the result of a fetch operation
-type Result struct {
-	Found     bool
-	Content   string
-	Error     error
-	Matches   []string // Regex matches found in content
 }
 
 // NewBrowser creates a new browser instance
@@ -51,11 +36,6 @@ func (b *Browser) Close() {
 
 // Fetch implements the Client interface for browser-based fetching
 func (b *Browser) Fetch(config *Config) *Result {
-	return b.fetch(config)
-}
-
-// fetch performs the web fetching and search operation
-func (b *Browser) fetch(config *Config) *Result {
 	var content string
 	var err error
 
@@ -70,6 +50,7 @@ func (b *Browser) fetch(config *Config) *Result {
 			Found:   false,
 			Content: "",
 			Error:   fmt.Errorf("failed to navigate to page: %w", err),
+			Matches: nil,
 		}
 	}
 
@@ -84,6 +65,7 @@ func (b *Browser) fetch(config *Config) *Result {
 				Found:   false,
 				Content: "",
 				Error:   fmt.Errorf("failed to find XPath elements: %w", err),
+				Matches: nil,
 			}
 		}
 
@@ -139,23 +121,5 @@ func (b *Browser) performSearch(content string, searchConfig *SearchConfig) (boo
 		return EvaluateCompoundPattern(compound, content)
 	default:
 		return false, nil, fmt.Errorf("unsupported search type: %s", searchConfig.Type)
-	}
-}
-
-// shouldNotify determines if a notification should be sent based on the result
-func (b *Browser) shouldNotify(result *Result, notifyOn string) bool {
-	if result.Error != nil {
-		// Always notify on errors
-		return true
-	}
-
-	switch strings.ToLower(notifyOn) {
-	case "found":
-		return result.Found
-	case "not_found":
-		return !result.Found
-	default:
-		log.Printf("Unknown notify_on value: %s, defaulting to 'found'", notifyOn)
-		return result.Found
 	}
 }
