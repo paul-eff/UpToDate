@@ -1,0 +1,15 @@
+{
+  "url": "https://monitoring-target.com",
+  "search": {
+    "type": "compound",
+    "pattern": "regex:error|failed|timeout OR (string:maintenance AND string:scheduled)",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "slack": {
+      "webhook_url": "YOUR_SLACK_WEBHOOK_URL"
+    }
+  },
+  "interval": 60,
+  "fetch_method": "http"
+}

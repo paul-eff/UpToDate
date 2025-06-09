@@ -1,0 +1,15 @@
+{
+  "url": "https://news-site.com",
+  "search": {
+    "type": "compound",
+    "pattern": "string:\"breaking news\" AND (urgent OR alert)",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "discord": {
+      "webhook_url": "YOUR_DISCORD_WEBHOOK_URL"
+    }
+  },
+  "interval": 180,
+  "fetch_method": "browser"
+}
