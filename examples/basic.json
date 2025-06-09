@@ -1,0 +1,14 @@
+{
+  "url": "https://example.com",
+  "search": {
+    "type": "string",
+    "pattern": "Sale",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "discord": {
+      "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+    }
+  },
+  "interval": 300
+}

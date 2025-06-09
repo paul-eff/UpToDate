@@ -1,0 +1,17 @@
+{
+  "url": "https://news.example.com",
+  "search": {
+    "type": "compound",
+    "pattern": "(string:'breaking news' OR string:urgent) AND regex:[0-9]{4}-[0-9]{2}-[0-9]{2}",
+    "notify_on": "found"
+  },
+  "notifications": {
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+    },
+    "discord": {
+      "webhook_url": "https://discord.com/api/webhooks/YOUR_DISCORD_WEBHOOK"
+    }
+  },
+  "interval": 120
+}

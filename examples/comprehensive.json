@@ -1,0 +1,27 @@
+{
+  "url": "https://api.status.example.com/health",
+  "search": {
+    "type": "compound",
+    "pattern": "string:'status': 'healthy' AND regex:'uptime':\s*[0-9]+",
+    "xpath": "//body",
+    "notify_on": "not_found"
+  },
+  "notifications": {
+    "email": {
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "username": "monitoring@company.com",
+      "password": "secure-app-password",
+      "from": "monitoring@company.com",
+      "to": "devops@company.com",
+      "subject": "🚨 Service Health Alert"
+    },
+    "discord": {
+      "webhook_url": "https://discord.com/api/webhooks/DISCORD_WEBHOOK_URL"
+    },
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/SLACK_WEBHOOK_URL"
+    }
+  },
+  "interval": 60
+}
