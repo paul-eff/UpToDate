@@ -30,27 +30,13 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create client based on configuration
-	var client Client
-	fetchMethod := config.FetchMethod
-	if fetchMethod == "" {
-		fetchMethod = "http"
-	}
-
-	switch fetchMethod {
-	case "browser":
-		client = NewBrowser()
-	case "http":
-		client = NewHTTP()
-	default:
-		log.Fatalf("Invalid fetch_method: %s (must be 'browser' or 'http')", fetchMethod)
-	}
+	// Create browser client
+	client := NewBrowser()
 	defer client.Close()
 
 	notificationService := NewNotificationService(config)
 
 	log.Printf("Starting UpToDate monitoring for: %s", config.URL)
-	log.Printf("Fetch method: %s", fetchMethod)
 	log.Printf("Search type: %s, pattern: %s", config.SearchConfig.Type, config.SearchConfig.Pattern)
 	log.Printf("Notify on: %s", config.SearchConfig.NotifyOn)
 

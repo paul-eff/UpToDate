@@ -14,7 +14,6 @@ type Config struct {
 	SearchConfig  SearchConfig  `json:"search"`
 	Notifications Notifications `json:"notifications"`
 	Interval      int           `json:"interval"`
-	FetchMethod   string        `json:"fetch_method"` // "browser" or "http"
 }
 
 // SearchConfig defines what to search for and how
@@ -151,25 +150,22 @@ func tokenizePattern(pattern string) ([]Token, error) {
 		// Handle patterns that might contain quoted strings
 		start := i
 		inQuotes := false
-		escaped := false
+		quoteChar := byte(0) // Track which quote character we're using
 
 		for i < len(pattern) {
 			char := pattern[i]
 
-			if escaped {
-				escaped = false
+			// Handle quote characters (both single and double quotes)
+			if (char == '"' || char == '\'') && quoteChar == 0 {
+				// Starting a quoted section
+				inQuotes = true
+				quoteChar = char
 				i++
 				continue
-			}
-
-			if char == '\\' {
-				escaped = true
-				i++
-				continue
-			}
-
-			if char == '"' {
-				inQuotes = !inQuotes
+			} else if char == quoteChar && inQuotes {
+				// Ending the quoted section
+				inQuotes = false
+				quoteChar = 0
 				i++
 				continue
 			}
@@ -322,14 +318,14 @@ func parsePatternElement(pattern string) (PatternElement, error) {
 				return PatternElement{}, fmt.Errorf("empty pattern value")
 			}
 
-			// Handle quoted patterns
-			if len(patternValue) >= 2 && patternValue[0] == '"' && patternValue[len(patternValue)-1] == '"' {
-				// Remove quotes and handle escape sequences
-				unquoted, err := unquoteString(patternValue)
-				if err != nil {
-					return PatternElement{}, fmt.Errorf("error parsing quoted pattern: %w", err)
+			// Handle quoted patterns (both single and double quotes)
+			if len(patternValue) >= 2 {
+				firstChar := patternValue[0]
+				lastChar := patternValue[len(patternValue)-1]
+				if (firstChar == '"' && lastChar == '"') || (firstChar == '\'' && lastChar == '\'') {
+					// Remove quotes - no escape processing for single quotes
+					patternValue = patternValue[1 : len(patternValue)-1]
 				}
-				patternValue = unquoted
 			}
 
 			return PatternElement{Type: possibleType, Pattern: patternValue}, nil
@@ -340,39 +336,6 @@ func parsePatternElement(pattern string) (PatternElement, error) {
 	return PatternElement{Type: "string", Pattern: pattern}, nil
 }
 
-// unquoteString removes quotes and handles escape sequences
-func unquoteString(s string) (string, error) {
-	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return s, nil
-	}
-
-	var result strings.Builder
-	i := 1 // Skip opening quote
-
-	for i < len(s)-1 { // Skip closing quote
-		if s[i] == '\\' && i+1 < len(s)-1 {
-			// Handle escape sequences
-			switch s[i+1] {
-			case '"':
-				result.WriteByte('"')
-			case '\\':
-				result.WriteByte('\\')
-			case 'n':
-				result.WriteByte('\n')
-			case 't':
-				result.WriteByte('\t')
-			default:
-				result.WriteByte(s[i+1])
-			}
-			i += 2
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-
-	return result.String(), nil
-}
 
 // EvaluateCompoundPattern evaluates a compound pattern against content
 func EvaluateCompoundPattern(compound *CompoundPattern, content string) (bool, []string, error) {
