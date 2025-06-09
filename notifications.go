@@ -121,7 +121,7 @@ func (ns *NotificationService) getNotificationReason(result *Result) string {
 // buildMessage creates a notification message
 // Constructs timestamped message with pattern status and match details
 func (ns *NotificationService) buildMessage(result *Result) string {
-	timestamp := time.Now().Format("2025-04-21 16:18:20")
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
 
 	if result.Error != nil {
 		return fmt.Sprintf("[%s] Error monitoring %s: %s", timestamp, ns.config.URL, result.Error.Error())
