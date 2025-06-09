@@ -2,6 +2,7 @@
 /*.json
 !/*.json.example
 uptodate
+/dist
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,visualstudiocode,windows,macos,linux,jetbrains+all,goland+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,visualstudiocode,windows,macos,linux,jetbrains+all,goland+all
