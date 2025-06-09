@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	// Parse command line flags for configuration file and execution mode
 	var configFile string
 	var runOnce bool
 
@@ -19,18 +20,17 @@ func main() {
 	flag.BoolVar(&runOnce, "once", false, "Run once and exit.")
 	flag.Parse()
 
-	// Load configuration
+	// Load JSON configuration from file and validate all settings
 	config, err := LoadConfig(configFile)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Validate configuration
 	if err := validateConfig(config); err != nil {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create browser client
+	// Create browser instance and notification service from config
 	client := NewBrowser()
 	defer client.Close()
 
@@ -40,17 +40,16 @@ func main() {
 	log.Printf("Search type: %s, pattern: %s", config.SearchConfig.Type, config.SearchConfig.Pattern)
 	log.Printf("Notify on: %s", config.SearchConfig.NotifyOn)
 
+	// Execute single fetch when -once flag is provided
 	if runOnce {
-		// Run once and exit
 		runFetch(client, notificationService, config)
 		return
 	}
 
-	// Set up signal handling for graceful shutdown
+	// Set up signal handling for graceful shutdown and configure monitoring interval
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	// Create ticker for periodic monitoring
 	interval := time.Duration(config.Interval) * time.Second
 	if interval == 0 {
 		interval = 300 * time.Second // Default to 5 minutes
@@ -61,10 +60,10 @@ func main() {
 
 	log.Printf("Monitoring every %v", interval)
 
-	// Run initial fetch
+	// Run first fetch immediately before starting timer
 	runFetch(client, notificationService, config)
 
-	// Monitor loop
+	// Wait for timer ticks or shutdown signals in infinite loop
 	for {
 		select {
 		case <-ticker.C:
@@ -76,38 +75,40 @@ func main() {
 	}
 }
 
-// runFetch performs a single fetch operation
+// runFetch performs a single fetch operation and handles logging
 func runFetch(client Client, notificationService *NotificationService, config *Config) {
 	log.Printf("Fetching %s...", config.URL)
 
+	// Call browser client to fetch page and search for patterns
 	result := client.Fetch(config)
 
+	// Output search results and any regex matches to console
 	if result.Error != nil {
 		log.Printf("Fetch error: %v", result.Error)
 	} else {
 		status := "not found"
 		if result.Found {
 			status = "found"
-			if len(result.Matches) > 0 {
-				log.Printf("Pattern '%s' %s. Matches found:", config.SearchConfig.Pattern, status)
-				for i, match := range result.Matches {
-					log.Printf("  [%d] %s", i+1, match)
-				}
-			} else {
-				log.Printf("Pattern '%s' %s", config.SearchConfig.Pattern, status)
+		}
+		
+		if result.Found && len(result.Matches) > 0 {
+			log.Printf("Pattern '%s' %s. Matches found:", config.SearchConfig.Pattern, status)
+			for i, match := range result.Matches {
+				log.Printf("  [%d] %s", i+1, match)
 			}
 		} else {
 			log.Printf("Pattern '%s' %s", config.SearchConfig.Pattern, status)
 		}
 	}
 
-	// Send notifications if needed
+	// Send notifications if conditions are met based on search outcome
 	if err := notificationService.SendNotification(result); err != nil {
 		log.Printf("Notification error: %v", err)
 	}
 }
 
-// validateConfig validates the configuration
+// validateConfig validates configuration and applies defaults
+// Checks required fields and sets defaults for missing optional values
 func validateConfig(config *Config) error {
 	if config.URL == "" {
 		return fmt.Errorf("URL is required")
@@ -118,10 +119,10 @@ func validateConfig(config *Config) error {
 	}
 
 	if config.SearchConfig.Type == "" {
-		config.SearchConfig.Type = "string" // Default to string search
+		config.SearchConfig.Type = "string"
 	}
 
-	// Validate compound patterns if type is compound
+	// Parse compound patterns to validate syntax before monitoring starts
 	if strings.ToLower(config.SearchConfig.Type) == "compound" {
 		_, err := ParseCompoundPattern(config.SearchConfig.Pattern)
 		if err != nil {
@@ -130,16 +131,16 @@ func validateConfig(config *Config) error {
 	}
 
 	if config.SearchConfig.NotifyOn == "" {
-		config.SearchConfig.NotifyOn = "found" // Default to notify when found
+		config.SearchConfig.NotifyOn = "found"
 	}
 
-	// Validate that at least one notification method is configured
+	// Ensure at least one notification method is available
 	notifications := config.Notifications
 	if notifications.Email == nil && notifications.Discord == nil && notifications.Slack == nil {
 		return fmt.Errorf("at least one notification method must be configured")
 	}
 
-	// Validate email config if present
+	// Check all required SMTP fields and apply default port and subject
 	if notifications.Email != nil {
 		email := notifications.Email
 		if email.SMTPHost == "" || email.Username == "" || email.Password == "" ||
@@ -147,19 +148,17 @@ func validateConfig(config *Config) error {
 			return fmt.Errorf("email configuration is incomplete")
 		}
 		if email.SMTPPort == 0 {
-			email.SMTPPort = 587 // Default SMTP port
+			email.SMTPPort = 587
 		}
 		if email.Subject == "" {
 			email.Subject = "UpToDate Alert!"
 		}
 	}
 
-	// Validate Discord config if present
 	if notifications.Discord != nil && notifications.Discord.WebhookURL == "" {
 		return fmt.Errorf("discord webhook URL is required")
 	}
 
-	// Validate Slack config if present
 	if notifications.Slack != nil && notifications.Slack.WebhookURL == "" {
 		return fmt.Errorf("slack webhook URL is required")
 	}

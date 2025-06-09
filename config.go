@@ -24,20 +24,20 @@ type SearchConfig struct {
 	NotifyOn string `json:"notify_on"` // "found" or "not_found"
 }
 
-// CompoundPattern represents a parsed compound search pattern with AND/OR operations
+// CompoundPattern represents parsed compound search pattern with AND/OR operations
 type CompoundPattern struct {
 	Operator string           // "AND" or "OR"
 	Patterns []PatternElement // Individual patterns or nested compounds
 }
 
-// PatternElement represents either a simple pattern or a nested compound pattern
+// PatternElement represents either a single pattern or nested compound pattern
 type PatternElement struct {
 	Type     string // "string", "regex", "compound"
 	Pattern  string
 	Compound *CompoundPattern // For nested compound patterns
 }
 
-// Notifications configuration for various notification methods
+// Notifications holds configuration for notification channels
 type Notifications struct {
 	Email   *EmailConfig   `json:"email,omitempty"`
 	Discord *DiscordConfig `json:"discord,omitempty"`
@@ -67,6 +67,7 @@ type SlackConfig struct {
 
 // LoadConfig loads configuration from a JSON file
 func LoadConfig(filename string) (*Config, error) {
+	// Read file contents and unmarshal JSON into config struct
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -81,12 +82,14 @@ func LoadConfig(filename string) (*Config, error) {
 }
 
 // ParseCompoundPattern parses a compound pattern string into a CompoundPattern struct
+// Uses tokenization followed by recursive parsing to handle nested expressions
 func ParseCompoundPattern(pattern string) (*CompoundPattern, error) {
 	pattern = strings.TrimSpace(pattern)
 	if pattern == "" {
 		return nil, fmt.Errorf("empty pattern")
 	}
 
+	// First tokenize the pattern string, then parse tokens into expression tree
 	tokens, err := tokenizePattern(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("tokenization error: %w", err)
@@ -101,19 +104,19 @@ type Token struct {
 	Value string
 }
 
-// tokenizePattern breaks down a pattern string into tokens, handling quoted strings
+// tokenizePattern converts pattern string into tokens with quote handling
+// Processes character-by-character to identify operators, parentheses and quoted strings
 func tokenizePattern(pattern string) ([]Token, error) {
 	var tokens []Token
 	i := 0
 
+	// Iterate through each character to build token list
 	for i < len(pattern) {
-		// Skip whitespace
 		if pattern[i] == ' ' || pattern[i] == '\t' {
 			i++
 			continue
 		}
 
-		// Handle parentheses with placeholder
 		if pattern[i] == '(' {
 			tokens = append(tokens, Token{Type: "LPAREN", Value: "("})
 			i++
@@ -125,7 +128,6 @@ func tokenizePattern(pattern string) ([]Token, error) {
 			continue
 		}
 
-		// Look for operators (AND, OR) - but only when not inside quotes
 		if (i+4 <= len(pattern)) && (pattern[i:i+4] == " AND") && (i+4 >= len(pattern) || pattern[i+4] == ' ') {
 			tokens = append(tokens, Token{Type: "AND", Value: "AND"})
 			i += 4
@@ -147,7 +149,7 @@ func tokenizePattern(pattern string) ([]Token, error) {
 			continue
 		}
 
-		// Handle patterns that might contain quoted strings
+		// Handle patterns that may contain quoted strings with spaces
 		start := i
 		inQuotes := false
 		quoteChar := byte(0) // Track which quote character we're using
@@ -155,28 +157,26 @@ func tokenizePattern(pattern string) ([]Token, error) {
 		for i < len(pattern) {
 			char := pattern[i]
 
-			// Handle quote characters (both single and double quotes)
+			// Track quote state to properly handle quoted content
 			if (char == '"' || char == '\'') && quoteChar == 0 {
-				// Starting a quoted section
 				inQuotes = true
 				quoteChar = char
 				i++
 				continue
 			} else if char == quoteChar && inQuotes {
-				// Ending the quoted section
 				inQuotes = false
 				quoteChar = 0
 				i++
 				continue
 			}
 
-			// If we're not in quotes, check for breaking conditions
+			// Outside quotes, stop parsing when encountering operators or parentheses
 			if !inQuotes {
 				if char == '(' || char == ')' {
 					break
 				}
 
-				// Check for operators
+				// Check upcoming characters for AND/OR operators
 				if i+4 <= len(pattern) && (pattern[i:i+4] == " AND" || pattern[i:i+4] == "AND ") {
 					break
 				}
@@ -207,7 +207,8 @@ func parseTokens(tokens []Token) (*CompoundPattern, error) {
 	return compound, err
 }
 
-// parseOrExpression handles OR operations (lowest precedence)
+// parseOrExpression handles OR operations with lowest precedence
+// OR operators bind less tightly than AND operators
 func parseOrExpression(tokens []Token, pos int) (*CompoundPattern, int, error) {
 	left, newPos, err := parseAndExpression(tokens, pos)
 	if err != nil {
@@ -233,7 +234,8 @@ func parseOrExpression(tokens []Token, pos int) (*CompoundPattern, int, error) {
 	return &CompoundPattern{Operator: "OR", Patterns: elements}, newPos, nil
 }
 
-// parseAndExpression handles AND operations (higher precedence)
+// parseAndExpression handles AND operations with higher precedence
+// AND operators are evaluated before OR operators
 func parseAndExpression(tokens []Token, pos int) (*CompoundPattern, int, error) {
 	left, newPos, err := parsePrimary(tokens, pos)
 	if err != nil {
@@ -260,6 +262,7 @@ func parseAndExpression(tokens []Token, pos int) (*CompoundPattern, int, error) 
 }
 
 // parsePrimary handles parentheses and individual patterns
+// Processes leaf nodes and parenthesized sub-expressions
 func parsePrimary(tokens []Token, pos int) (*CompoundPattern, int, error) {
 	if pos >= len(tokens) {
 		return nil, pos, fmt.Errorf("unexpected end of input")
@@ -269,13 +272,13 @@ func parsePrimary(tokens []Token, pos int) (*CompoundPattern, int, error) {
 
 	switch token.Type {
 	case "LPAREN":
-		// Parse expression inside parentheses
+		// Parse expression inside parentheses recursively
 		compound, newPos, err := parseOrExpression(tokens, pos+1)
 		if err != nil {
 			return nil, pos, err
 		}
 
-		// Check for closing parenthesis
+		// Verify closing parenthesis exists
 		if newPos >= len(tokens) || tokens[newPos].Type != "RPAREN" {
 			return nil, pos, fmt.Errorf("expected closing parenthesis")
 		}
@@ -300,17 +303,17 @@ func parsePrimary(tokens []Token, pos int) (*CompoundPattern, int, error) {
 	}
 }
 
-// parsePatternElement parses a single pattern element with optional type prefix
+// parsePatternElement parses pattern element with optional type prefix
+// Recognizes type:pattern syntax and handles quoted patterns
 func parsePatternElement(pattern string) (PatternElement, error) {
 	pattern = strings.TrimSpace(pattern)
 	if pattern == "" {
 		return PatternElement{}, fmt.Errorf("empty pattern element")
 	}
 
-	// Check for type prefix (but be careful about colons in the pattern itself)
+	// Search for colon to identify type prefix while avoiding pattern content
 	colonIndex := strings.Index(pattern, ":")
 	if colonIndex > 0 && colonIndex < len(pattern)-1 {
-		// Check if this looks like a type prefix
 		possibleType := strings.ToLower(strings.TrimSpace(pattern[:colonIndex]))
 		if possibleType == "string" || possibleType == "regex" {
 			patternValue := strings.TrimSpace(pattern[colonIndex+1:])
@@ -318,12 +321,12 @@ func parsePatternElement(pattern string) (PatternElement, error) {
 				return PatternElement{}, fmt.Errorf("empty pattern value")
 			}
 
-			// Handle quoted patterns (both single and double quotes)
+			// Process quoted patterns by removing surrounding quotes
 			if len(patternValue) >= 2 {
 				firstChar := patternValue[0]
 				lastChar := patternValue[len(patternValue)-1]
 				if (firstChar == '"' && lastChar == '"') || (firstChar == '\'' && lastChar == '\'') {
-					// Remove quotes - no escape processing for single quotes
+					// Remove quote characters from pattern value
 					patternValue = patternValue[1 : len(patternValue)-1]
 				}
 			}
@@ -332,21 +335,21 @@ func parsePatternElement(pattern string) (PatternElement, error) {
 		}
 	}
 
-	// Default to string type
 	return PatternElement{Type: "string", Pattern: pattern}, nil
 }
 
-
 // EvaluateCompoundPattern evaluates a compound pattern against content
+// Applies the parsed boolean expression to web page content
 func EvaluateCompoundPattern(compound *CompoundPattern, content string) (bool, []string, error) {
 	if compound == nil {
 		return false, nil, fmt.Errorf("nil compound pattern")
 	}
 
+	// Store matches from all sub-patterns for result reporting
 	var allMatches []string
 	results := make([]bool, len(compound.Patterns))
 
-	// Evaluate each pattern element
+	// Test each pattern element against content and gather results
 	for i, element := range compound.Patterns {
 		found, matches, err := evaluatePatternElement(element, content)
 		if err != nil {
@@ -356,10 +359,11 @@ func EvaluateCompoundPattern(compound *CompoundPattern, content string) (bool, [
 		allMatches = append(allMatches, matches...)
 	}
 
-	// Apply the compound operator
+	// Use AND/OR operator to combine individual pattern results
 	var finalResult bool
 	switch strings.ToUpper(compound.Operator) {
 	case "AND":
+		// Return true only if every pattern matches
 		finalResult = true
 		for _, result := range results {
 			if !result {
@@ -368,6 +372,7 @@ func EvaluateCompoundPattern(compound *CompoundPattern, content string) (bool, [
 			}
 		}
 	case "OR":
+		// Return true if any pattern matches
 		finalResult = false
 		for _, result := range results {
 			if result {
@@ -382,12 +387,12 @@ func EvaluateCompoundPattern(compound *CompoundPattern, content string) (bool, [
 	return finalResult, allMatches, nil
 }
 
-// evaluatePatternElement evaluates a single pattern element
+// evaluatePatternElement evaluates a single pattern element against content
 func evaluatePatternElement(element PatternElement, content string) (bool, []string, error) {
 	switch element.Type {
 	case "string":
 		found := strings.Contains(content, element.Pattern)
-		var matches []string
+		matches := []string{}
 		if found {
 			matches = []string{element.Pattern}
 		}

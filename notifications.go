@@ -11,6 +11,7 @@ import (
 )
 
 // NotificationService handles sending notifications
+// Coordinates sending messages across multiple notification channels
 type NotificationService struct {
 	config *Config
 }
@@ -21,19 +22,22 @@ func NewNotificationService(config *Config) *NotificationService {
 }
 
 // SendNotification sends notifications based on fetch results
+// Attempts delivery to all configured channels and tracks results
 func (ns *NotificationService) SendNotification(result *Result) error {
-	shouldNotify := ns.shouldNotify(result)
-	if !shouldNotify {
+	// Skip sending if notification conditions are not met
+	if !ns.shouldNotify(result) {
 		return nil
 	}
 
+	// Build message text and determine notification reason
 	message := ns.buildMessage(result)
 	reason := ns.getNotificationReason(result)
 
+	// Initialize tracking for successful sends and errors
 	var errors []error
 	var sendChannels []string
 
-	// Send email notification
+	// Try sending to each configured channel without stopping on failures
 	if ns.config.Notifications.Email != nil {
 		if err := ns.sendEmail(message); err != nil {
 			errors = append(errors, fmt.Errorf("email notification failed: %w", err))
@@ -42,7 +46,6 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 		}
 	}
 
-	// Send Discord notification
 	if ns.config.Notifications.Discord != nil {
 		if err := ns.sendDiscord(message); err != nil {
 			errors = append(errors, fmt.Errorf("discord notification failed: %w", err))
@@ -51,7 +54,6 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 		}
 	}
 
-	// Send Slack notification
 	if ns.config.Notifications.Slack != nil {
 		if err := ns.sendSlack(message); err != nil {
 			errors = append(errors, fmt.Errorf("slack notification failed: %w", err))
@@ -60,7 +62,7 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 		}
 	}
 
-	// Log notification status
+	// Log successful deliveries and return any accumulated errors
 	if len(sendChannels) > 0 {
 		log.Printf("Notification sent via %v - Reason: %s", sendChannels, reason)
 	}
@@ -73,11 +75,14 @@ func (ns *NotificationService) SendNotification(result *Result) error {
 }
 
 // shouldNotify determines if notifications should be sent
+// Returns true for errors or when pattern results match notify_on setting
 func (ns *NotificationService) shouldNotify(result *Result) bool {
+	// Send notifications for any fetch errors regardless of pattern results
 	if result.Error != nil {
 		return true
 	}
 
+	// Check notify_on setting to determine when to send for pattern results
 	notifyOn := ns.config.SearchConfig.NotifyOn
 	switch notifyOn {
 	case "found":
@@ -85,11 +90,11 @@ func (ns *NotificationService) shouldNotify(result *Result) bool {
 	case "not_found":
 		return !result.Found
 	default:
-		return result.Found // Default to notifying when found
+		return result.Found // Default behavior is notify when pattern found
 	}
 }
 
-// getNotificationReason returns the reason for sending the notification
+// getNotificationReason returns reason for sending notification
 func (ns *NotificationService) getNotificationReason(result *Result) string {
 	if result.Error != nil {
 		return "fetch error occurred"
@@ -114,6 +119,7 @@ func (ns *NotificationService) getNotificationReason(result *Result) string {
 }
 
 // buildMessage creates a notification message
+// Constructs timestamped message with pattern status and match details
 func (ns *NotificationService) buildMessage(result *Result) string {
 	timestamp := time.Now().Format("2025-04-21 16:18:20")
 
@@ -132,7 +138,7 @@ func (ns *NotificationService) buildMessage(result *Result) string {
 		status,
 		ns.config.URL)
 
-	// Add matches if found and using regex
+	// Add specific regex matches to message when patterns are found
 	if result.Found && len(result.Matches) > 0 {
 		message += "\n\nMatches found:"
 		for i, match := range result.Matches {
@@ -144,18 +150,14 @@ func (ns *NotificationService) buildMessage(result *Result) string {
 }
 
 // sendEmail sends email notification
+// Connects to SMTP server and sends formatted email message
 func (ns *NotificationService) sendEmail(message string) error {
 	emailConfig := ns.config.Notifications.Email
 
 	auth := smtp.PlainAuth("", emailConfig.Username, emailConfig.Password, emailConfig.SMTPHost)
-
-	to := []string{emailConfig.To}
-	subject := emailConfig.Subject
-
-	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", emailConfig.To, subject, message)
-
+	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", emailConfig.To, emailConfig.Subject, message)
 	addr := fmt.Sprintf("%s:%d", emailConfig.SMTPHost, emailConfig.SMTPPort)
-	return smtp.SendMail(addr, auth, emailConfig.From, to, []byte(body))
+	return smtp.SendMail(addr, auth, emailConfig.From, []string{emailConfig.To}, []byte(body))
 }
 
 // DiscordWebhook represents a Discord webhook payload
@@ -164,6 +166,7 @@ type DiscordWebhook struct {
 }
 
 // sendDiscord sends Discord webhook notification
+// Posts JSON message to Discord webhook URL
 func (ns *NotificationService) sendDiscord(message string) error {
 	webhook := DiscordWebhook{Content: message}
 
@@ -191,6 +194,7 @@ type SlackWebhook struct {
 }
 
 // sendSlack sends Slack webhook notification
+// Posts JSON message to Slack webhook URL
 func (ns *NotificationService) sendSlack(message string) error {
 	webhook := SlackWebhook{Text: message}
 
